@@ -26,8 +26,11 @@ int gtime_minute;
 int ahour = 0;
 int amin = 0;
 bool hour_enable = true;
+bool alarm_enable = false;
 bool min_enable = false;
 bool motion_enable = false;
+bool motor_enable = false;
+
 
 // Used for when to set alarm
 bool setAlarm = false;
@@ -41,6 +44,10 @@ unsigned long lastButtonPress;
 
 // Used to see how long has been since last time check
 unsigned long lastClockCylce;
+
+long first_location, current;
+long barrier = 30;
+bool enable = true;
 
 
 SR04 sr04 = SR04(ECHO_PIN, TRIG_PIN);
@@ -67,6 +74,9 @@ void setup() {
   // turn on the backlight
   lcd.backlight();
   lcd.clear();
+
+  bool motion_enable = false;
+  motion_sensor();
 }
 
 void loop() {
@@ -76,6 +86,8 @@ void loop() {
   buttonHeld();
   changeAlarm();
   checkAlarm();
+  alarm();
+  motion_sensor();
 }
 void buttonHeld() {
   //If we detect LOW signal, button is being held
@@ -106,14 +118,14 @@ void buttonPres() {
       Serial.println("Button pressed!");
 
       // If user is ready to change the minutes then toggle both enables
-      if (hour_enable == true && min_enable == false) {
+      if (hour_enable == true && min_enable == false && alarm_enable == false) {
         Serial.println("  edwbydwbdwb");
         // Now user can change the minutes of the alarm
         hour_enable = false;
         min_enable = true;
         // If user presses button again then both minute and hour are set so
         // we are able to set the alarm
-      } else {
+      } else if (hour_enable == false && min_enable == true && alarm_enable == false) {
         // Alarm has been set so set bool to false
         setAlarm = false;
         // Reset timer variables
@@ -125,6 +137,12 @@ void buttonPres() {
         ButtonPressEn = false;
         lcd.setCursor(0, 2);
         lcd.print("                    ");
+        lcd.setCursor(0, 3);
+        lcd.print("                    ");
+      } else if (alarm_enable == true) {
+        alarm_enable = false;
+        ButtonPressEn = false;
+        motion_enable = true;
         lcd.setCursor(0, 3);
         lcd.print("                    ");
       }
@@ -233,8 +251,42 @@ void clockFun() {
 
 void checkAlarm() {
   if (setAlarm == false) {
-    if (ahour == gtime_hour && amin == gtime_minute) {
+    if (ahour == gtime_hour && amin == gtime_minute && dt.second == 0) {
       alarm_enable = true;
     }
+  }
+}
+
+
+void motion_sensor() {
+  // initialize function variables
+  long current_distance;
+  unsigned long myTime = millis();
+  if (motion_enable == true && millis() < (myTime + 30000)) {
+    current = sr04.Distance();
+    Serial.print(current);
+    Serial.println("current location cm");
+    delay(2000);
+    Serial.print(myTime);
+    Serial.println("seconds");
+    if (current < barrier) {
+      Serial.println("true");
+      motion_enable = false;
+      motor_enable = true;
+    }
+  }
+  else
+  {
+    motion_enable = false;
+  }
+}
+void alarm() {
+  if (alarm_enable) {
+    ButtonPressEn = true;
+    Serial.println(ButtonPressEn);
+    // Turn on buzzer and wait for button to be pressed
+    lcd.setCursor(0, 3);
+    lcd.print("ALARM!!!");
+    buttonPres();
   }
 }
