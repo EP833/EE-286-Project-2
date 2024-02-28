@@ -5,15 +5,16 @@
 #include <Wire.h>
 #include <DS3231.h>
 #include <LiquidCrystal_I2C.h>
+#include <Stepper.h>
 
 
 #define TRIG_PIN 12
 #define ECHO_PIN 11
 
 // Rotary Encoder Inputs
-#define CLK 2
-#define DT 3
-#define SW 4
+#define CLK 5
+#define DT 6
+#define SW 7
 
 
 // Used for rotary encoder
@@ -41,6 +42,7 @@ bool ButtonPressEn = false;
 // Used to see how long button pressed for
 unsigned long currenrButtonPress;
 unsigned long lastButtonPress;
+unsigned long alarm_timer;
 
 // Used to see how long has been since last time check
 unsigned long lastClockCylce;
@@ -49,7 +51,22 @@ long first_location, current;
 long barrier = 30;
 bool enable = true;
 
+// declare variables
+int stepCount = 0;  // number of steps the motor has taken
+int stepCount2 = 0;
+const int stepsPerRevolution = 1000;
 
+const int forwardPin = 2;
+const int backwardPin = 3;
+const int lowerTime = 12000;
+const int raiseTime = 12000;
+const int delayTime = 3000;
+int count = 0;
+int condition = 0;
+
+
+Stepper myStepper(stepsPerRevolution, 9, 10, 11, 12);
+Stepper myStepper2(stepsPerRevolution, 9, 11, 10, 12);
 SR04 sr04 = SR04(ECHO_PIN, TRIG_PIN);
 ezButton button(SW);  // create ezButton object that attach to SW pin;
 DS3231 clock;
@@ -62,6 +79,10 @@ void setup() {
   pinMode(CLK, INPUT);
   pinMode(DT, INPUT);
   pinMode(SW, INPUT_PULLUP);
+
+  // initialize pins
+  pinMode(forwardPin, OUTPUT);
+  pinMode(backwardPin, OUTPUT);
 
   // Setup Serial Monitor
   Serial.begin(9600);
@@ -88,6 +109,7 @@ void loop() {
   checkAlarm();
   alarm();
   motion_sensor();
+  motor();
 }
 void buttonHeld() {
   //If we detect LOW signal, button is being held
@@ -262,11 +284,11 @@ void motion_sensor() {
   // initialize function variables
   long current_distance;
   unsigned long myTime = millis();
-  if (motion_enable == true && millis() < (myTime + 30000)) {
+  if (motion_enable == true && millis() < (myTime + 5000)) {
     current = sr04.Distance();
     Serial.print(current);
     Serial.println("current location cm");
-    delay(2000);
+    delay(500);
     Serial.print(myTime);
     Serial.println("seconds");
     if (current < barrier) {
@@ -274,9 +296,7 @@ void motion_sensor() {
       motion_enable = false;
       motor_enable = true;
     }
-  }
-  else
-  {
+  } else {
     motion_enable = false;
   }
 }
@@ -288,5 +308,63 @@ void alarm() {
     lcd.setCursor(0, 3);
     lcd.print("ALARM!!!");
     buttonPres();
+    if (millis() - alarm_timer > 5000) {
+      motor_enable = true;
+      lcd.setCursor(8, 3);
+      lcd.print("idjdw");
+    }
+  } else {
+    alarm_timer = millis();
+  }
+}
+
+void motor() {
+  if (motor_enable == true) {
+
+
+    if (stepCount2 <= 200) {
+      // step one step:
+      myStepper2.step(1);
+      Serial.print("steps:");
+      Serial.println(stepCount);
+      stepCount2++;
+      delay(5);
+    }
+
+    // stop
+    digitalWrite(forwardPin, LOW);
+    digitalWrite(backwardPin, LOW);
+    delay(delayTime);
+
+    // lower platform
+    digitalWrite(forwardPin, LOW);
+    digitalWrite(backwardPin, HIGH);
+    delay(lowerTime);
+
+    //stop
+    digitalWrite(forwardPin, HIGH);
+    digitalWrite(backwardPin, HIGH);
+    delay(delayTime);
+
+    //raise platform
+    digitalWrite(forwardPin, HIGH);
+    digitalWrite(backwardPin, LOW);
+    delay(raiseTime);
+
+    count++;
+
+    // turn motor off
+    digitalWrite(forwardPin, LOW);
+    digitalWrite(backwardPin, LOW);
+
+    delay(1000);
+
+    if (stepCount < 100) {
+      myStepper.step(1);
+      Serial.print("steps:");
+      Serial.println(stepCount);
+      stepCount++;
+      delay(5);
+    }
   }
 }
