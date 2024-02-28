@@ -109,13 +109,13 @@ void setup() {
 void loop() {
   button.loop();  // MUST call the loop() function first
 
-  clockFun();
-  buttonHeld();
-  changeAlarm();
-  checkAlarm();
-  alarm();
-  motion_sensor();
-  motor();
+  clockFun();     // Used to get the current time from the RTC as well as display it to screen
+  buttonHeld();   // Used to check if button has been held so user can change alarm
+  changeAlarm();  // Allows user to change the alarm using the rotary encoder
+  checkAlarm();   // Used to check if alarm needs to be set off
+  alarm();        // Sets alarm on and checks if alarm has been running longer than allowed time
+  motion_sensor();// Checks if user got in bed and if they did to enable the motor
+  motor();        // Turns on the motor to spill water on the user
 }
 void buttonHeld() {
   //If we detect LOW signal, button is being held
