@@ -316,6 +316,9 @@ void alarm() {
   } else {
     alarm_timer = millis();
   }
+    if (millis() - alarm_timer > 17000) {
+      motor_enable = false;
+  }
 }
 
 void motor() {
